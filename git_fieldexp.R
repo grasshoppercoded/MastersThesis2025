@@ -67,7 +67,7 @@ print(cages)
 
 ggplot(cages %>% 
          filter(round %in% c(1,2)), aes(x = days, y = alive, color = sp)) +
-  geom_jitter() +
+  geom_jitter(height=.1) +
   geom_smooth(method = "lm") +
   facet_grid(~ burn) 
 
@@ -104,14 +104,15 @@ ggplot(DD,
 
 ## model 
 
-survxburn <- glmmTMB(perc ~ sp * dep * burn + (1|block),
+survxburn <- glmmTMB(perc ~ sp * dep * burn + (1|block), # can remove the 3-way interactions because its non-sig
                      data = DD,
-                     family = "binomial")
+                     family = "ordbeta") # ordbeta can handle 0 and 1 and proportions between
 
 summary(survxburn)
 Anova(survxburn)
-emmeans(survxburn, pairwise ~ sp)
-emmeans(survxburn, pairwise ~ sp|dep)
+emmeans(survxburn, pairwise ~ sp, type="response") # need to back-transform
+emmeans(survxburn, pairwise ~ sp|dep, type="response") # need to back-transform
+emmeans(survxburn, pairwise ~ dep|sp, type="response") # another way to look at contrasts
 
 plot(simulateResiduals(survxburn))
 
