@@ -182,6 +182,68 @@ emmeans(densxsp, pairwise ~ sp*dens, type = "response")
 
 # ---- H4: Achurum performed better overall in grass-dominated plots ----
 
+# upload nutrient/plant dataset 
+
+data2 <- read_csv("Field Experiment 2025/nutrient content analyses/plants_summ25_relativeabundance_fixed.csv")
+
+head(data2)
+summary(data2)
+
+ra <- data2 %>% 
+  mutate(plant = str_trim(plant)) %>% 
+  mutate(
+    veg = case_when(
+      plant %in% c("wide", "cent", "dican", "bb") ~ "grass",
+      plant %in% c("silky", "dog", "other") ~ "forb")) %>% 
+  select(-c(notes, bare)) %>% 
+  filter(plant != "")
+
+# clean data to be joined, grass to forb ratio created 
+
+surv_join <- ra %>%
+  filter(round == 1) %>%
+  group_by(cage, b_u, veg, round) %>% 
+  summarise(total = sum(perc)) %>% 
+  pivot_wider(names_from = veg, values_from = total) %>% 
+  mutate(grass_forb_ratio = grass / forb)
+ 
+
+# add grass % 
+
+surv_join <- surv_join %>% 
+  mutate(grass_perc = (grass/(grass + forb))*100)
+
+# left join of only round 4? 
+
+surv_plants <- surv_join %>% 
+  left_join(DD, by = "cage")
+
+## ---- 4.1 regression of overall achurum survival and grass percentage ---- 
+
+ggplot(surv_plants %>% 
+         filter(sp == "ach"),
+       aes(x = grass_perc, y = perc)) +
+  geom_jitter(width = 0.05, height = 0.05) +
+  geom_smooth(method = "lm")
+
+## ---- 4.2 achurum survival and grass % based on frequency dependence regression ----
+
+ggplot(surv_plants %>% 
+         filter(sp == "ach"),
+       aes(x = grass_perc, y = perc)) +
+  geom_jitter(width = 0.05, height = 0.05) +
+  geom_smooth(method = "lm") + 
+  facet_grid(~ dep)
+
+## ---- 4.3 achurum survival and grass % based on density dependence regression ----
+
+ggplot(surv_plants %>% 
+         filter(sp == "ach"),
+       aes(x = grass_perc, y = perc, color = dep)) +
+  geom_jitter(width = 0.05, height = 0.05) +
+  geom_smooth(method = "lm") + 
+  facet_grid(~ dens)
+
 
 
 
