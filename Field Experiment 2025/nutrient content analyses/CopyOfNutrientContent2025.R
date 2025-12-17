@@ -17,8 +17,6 @@ library(gitcreds)
 library(glmmTMB)
 
 
-use_git_config(user.name = "Lucia", user.email = "lucia.naviasalva@ufl.edu")
-
 # loading data 
 
 ra <- read.csv("plants_summ25_relativeabundance_fixed.csv")
