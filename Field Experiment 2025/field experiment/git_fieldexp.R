@@ -223,14 +223,15 @@ surv_plants <- surv_join %>%
 ggplot(surv_plants %>% 
          filter(sp == "ach"),
        aes(x = grass_perc, y = perc)) +
-  geom_jitter(width = 0.05, height = 0.05) +
-  geom_smooth(method = "lm")
+  #geom_jitter(width = 0.05, height = 0.05) +
+  geom_point() +
+  geom_smooth(method = "lm") # can add family=beta
 
 ## ---- 4.2 achurum survival and grass % based on frequency dependence regression ----
 
 ggplot(surv_plants %>% 
          filter(sp == "ach"),
-       aes(x = grass_perc, y = perc)) +
+       aes(x = grass_perc, y = perc, color=burn)) +
   geom_jitter(width = 0.05, height = 0.05) +
   geom_smooth(method = "lm") + 
   facet_grid(~ dep)
