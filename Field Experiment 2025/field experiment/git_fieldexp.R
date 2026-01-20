@@ -73,7 +73,7 @@ ggplot(cages %>%
 
 ## ---- 1.1 survival boxplot ----
 
-### 1.1 survival in burned vs. unburned using % survival (round 2)
+### 1.1 overall survival in burned vs. unburned using % survival (round 2)
 
 # make data set with proportion survival 
 
@@ -89,41 +89,89 @@ ggplot(DD,
        aes(x = sp, y = perc, color = sp)) +
   geom_boxplot() +
   geom_point() +
-  facet_grid(~ burn)
+  facet_grid(~ burn) + 
+  theme_bw(base_size = 30) + 
+  labs(x = "Species", 
+       y = "Survival Proportion", 
+       title = "Overall survival of species in burned vs. unburned") + 
+  theme(plot.title = element_text(hjust = 0.5, 
+                                  face = "bold", 
+                                  size = 28))
 
-# ---- H2: Achurum performed best in mixtures ----
-
-## ---- 2.1 treatment boxplot ----
-## ---- 2.1 survival in burned vs. unburned across treatments (round 2) of both species
+# ---- 1.2 Overall survival with all treatments ----
 
 ggplot(DD, 
        aes(x = sp, y = perc, color = sp)) +
   geom_boxplot() +
   geom_point() +
-  facet_grid(dep ~ burn)
+  facet_grid(dep ~ burn) + 
+  theme_bw(base_size = 26) + 
+  labs(x = "Species", 
+       y = "Survival Proportion", 
+       title = "Overall survival of species in all treatments") + 
+  theme(plot.title = element_text(hjust = 0.5, 
+                                  face = "bold", 
+                                  size = 28))
 
-## model 
+ggplot(DD, 
+       aes(x = sp, y = perc, color = sp)) +
+  stat_summary(fun = median, geom = "point", size = 4) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.2) +
+  geom_jitter(width = 0.1, alpha = 0.5) +
+  facet_grid(dep ~ burn) + 
+  theme_bw(base_size = 26) + 
+  labs(x = "Species", 
+       y = "Survival Proportion", 
+       title = "Overall survival of species in all treatments") + 
+  theme(plot.title = element_text(hjust = 0.5, 
+                                  face = "bold", 
+                                  size = 28))
 
-survxburn <- glmmTMB(perc ~ sp * dep * burn + (1|block), # can remove the 3-way interactions because its non-sig
+
+
+H1 <- glmmTMB(perc ~ sp * burn + (1|block), # can remove the 3-way interactions because its non-sig
                      data = DD,
                      family = "ordbeta") # ordbeta can handle 0 and 1 and proportions between
 
-summary(survxburn)
-Anova(survxburn)
-emmeans(survxburn, pairwise ~ sp, type="response") # need to back-transform
-emmeans(survxburn, pairwise ~ sp|dep, type="response") # need to back-transform
-emmeans(survxburn, pairwise ~ dep|sp, type="response") # another way to look at contrasts
+plot(simulateResiduals(H1))
 
-plot(simulateResiduals(survxburn))
+summary(H1)
+Anova(H1)
+emmeans(H1, pairwise ~ sp|burn, type = "response")
 
-## ---- 2.2 survival in burned vs. unburned across treatments (round 2) of just achurum 
+# ---- H2: Achurum performed best in mixtures ----
+
+## ---- 2.1 treatment boxplot ----
+
+## ---- 2.1 survival in burned vs. unburned across treatments (round 2) of Achurum 
 
 ggplot(DD %>% 
          filter(sp == "ach"), 
        aes(x = sp, y = perc, color = sp)) +
   geom_boxplot() +
   geom_point() +
-  facet_grid(dep ~ burn)
+  facet_grid(dep ~ burn) +
+  theme_bw(base_size = 22) + 
+  labs(x = "A. carinatum", 
+       y = "Survival Proportion", 
+       title = "Survival of A. carinatum in all treatments") + 
+  theme(plot.title = element_text(hjust = 0.5, 
+                                  face = "bold", 
+                                  size = 28))
+
+
+## model 
+
+H2 <- glmmTMB(perc ~ dep * burn + (1|block), # can remove the 3-way interactions because its non-sig
+                     data = DD %>% filter(sp == "ach"),
+                     family = "ordbeta") # ordbeta can handle 0 and 1 and proportions between
+
+summary(H2)
+Anova(H2)
+emmeans(H2, pairwise ~ dep|burn, type = "response") # need to back-transform
+
+plot(simulateResiduals(H2))
+
 
 # ---- H3: Grasshoppers experienced more density dependence in monocultures of the burned plot ----
 
@@ -132,7 +180,14 @@ ggplot(DD %>%
 ggplot(DD,aes(x = factor(dens), y = perc, color = dep)) +
   geom_boxplot() +
   geom_point() +
-  facet_grid(~ burn)
+  facet_grid(~ burn) +
+  theme_bw(base_size = 22) + 
+  labs(x = "Densities and frequencies", 
+       y = "Survival Proportion", 
+       title = "Density and frequency dependence of both species in all treatments") + 
+  theme(plot.title = element_text(hjust = 0.2, 
+                                  face = "bold", 
+                                  size = 23))
 
 ## ----- 3.2 achurum density dependence in mixtures and monocultures ----
 
@@ -141,7 +196,14 @@ ggplot(DD %>%
        aes(x = factor(dens), y = perc, color = dep)) +
   geom_boxplot() +
   geom_point() +
-  facet_grid(~ burn)
+  facet_grid(~ burn) +
+  theme_bw(base_size = 22) + 
+  labs(x = "Densities and frequencies", 
+       y = "Survival Proportion", 
+       title = "Density and frequency dependence of A. carinatum in all treatments") + 
+  theme(plot.title = element_text(hjust = 0.2, 
+                                  face = "bold", 
+                                  size = 22))
 
 ## ----- 3.2 achurum % frequency in mixtures and monocultures ----
 
@@ -153,11 +215,18 @@ ach_DD <- DD %>%
          ach_dens = factor(ach_dens, levels = c("33", "66", "100")))
 
 ggplot(ach_DD %>%
-         filter(sp == "ach"),
+         filter(sp == "ach", dep == "mixture"),
        aes(x = factor(ach_dens), y = perc, color = dep)) +
   geom_boxplot() +
   geom_point() +
-  facet_grid(~ burn)
+  facet_grid(~ burn) +
+  theme_bw(base_size = 22) + 
+  labs(x = "Percent frequency of Achurum", 
+       y = "Survival Proportion", 
+       title = "Frequency dependence of Achurum in all treatments") + 
+  theme(plot.title = element_text(hjust = 0.2, 
+                                  face = "bold", 
+                                  size = 22))
 
 ## ----- 3.3 aptenopedes density dependence in mixtures and monocultures ----
 
@@ -173,7 +242,14 @@ ggplot(DD %>%
 ggplot(DD, aes(x = factor(dens), y = perc, color = dep)) +
   geom_boxplot() +
   geom_point() +
-  facet_grid(sp ~ burn)
+  facet_grid(sp ~ burn) +
+  theme_bw(base_size = 22) + 
+  labs(x = "Densities", 
+       y = "Survival Proportion", 
+       title = "DD of both species in all treatments") + 
+  theme(plot.title = element_text(hjust = 0.5, 
+                                  face = "bold", 
+                                  size = 28))
 
 ## ---- H3 model ----
 
