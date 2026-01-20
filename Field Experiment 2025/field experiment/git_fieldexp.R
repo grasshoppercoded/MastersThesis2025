@@ -56,7 +56,7 @@ unique(cages$alive)
 head(cages)
 print(cages)
 
-# ---- H1: Grasshoppers survived more in burned treatment.Aptenopedes died more overall ----
+# ---- H1: Grasshoppers survived more in burned treatment. Aptenopedes died more overall ----
 
 ## ---- 1.1 survival regression  ----
 
@@ -94,7 +94,7 @@ ggplot(DD,
 # ---- H2: Achurum performed best in mixtures ----
 
 ## ---- 2.1 treatment boxplot ----
-## ---- 2.1 survival in burned vs. unburned across treatments (round 2)
+## ---- 2.1 survival in burned vs. unburned across treatments (round 2) of both species
 
 ggplot(DD, 
        aes(x = sp, y = perc, color = sp)) +
@@ -115,6 +115,15 @@ emmeans(survxburn, pairwise ~ sp|dep, type="response") # need to back-transform
 emmeans(survxburn, pairwise ~ dep|sp, type="response") # another way to look at contrasts
 
 plot(simulateResiduals(survxburn))
+
+## ---- 2.2 survival in burned vs. unburned across treatments (round 2) of just achurum 
+
+ggplot(DD %>% 
+         filter(sp == "ach"), 
+       aes(x = sp, y = perc, color = sp)) +
+  geom_boxplot() +
+  geom_point() +
+  facet_grid(dep ~ burn)
 
 # ---- H3: Grasshoppers experienced more density dependence in monocultures of the burned plot ----
 

@@ -1,5 +1,7 @@
 #---- SETUP ----
 
+##### grass % just to see, but also change 0 forbs to 0.5 and then log transform the ratio. 
+
 rm(list = ls())
 
 # packages 
@@ -15,10 +17,10 @@ library(stringr)
 library(usethis)
 library(gitcreds)
 library(glmmTMB)
-
+library(car)
+library(emmeans)
 
 use_git_config(user.name = "Lucia", user.email = "lucia.naviasalva@ufl.edu")
-
 
 # loading data 
 
@@ -35,7 +37,7 @@ unique(ra$plant)
 
 # ---- Data Cleaning ----
 
-# create forb and grass, and clean data - LONG FORMAT
+## create forb and grass, and clean data - LONG FORMAT ----
 
 ra <- ra %>% 
   mutate(plant = str_trim(plant)) %>% 
@@ -208,9 +210,9 @@ ggplot(surv_join_2, aes(x = grass_forb_ratio, y = alive)) +
 
 # now with burn vs unburn treatment (round 2)
 
-ggplot(surv_join_2, aes(x = grass_forb_ratio, y = alive)) +
+ggplot(surv_join_2, aes(x = log(grass_forb_ratio), y = alive)) +
   geom_jitter(width = 0.05, height = 0.05) +
-  geom_smooth() + 
+  geom_smooth(method = "glm", method.args = list(family = binomial)) + 
   facet_grid(~burn)
 
 # separating by treatments
@@ -226,19 +228,49 @@ ggplot(surv_join_2 %>%
 
 ## now with round 4?
 
+surv_join_4_ach <- surv %>% 
+  left_join(cages, by = "cage") %>% 
+  filter(round == 4) %>% 
+  filter(sp == "ach")
+
 surv_join_4_mix <- surv %>% 
   left_join(cages, by = "cage") %>% 
   filter(round == 4) %>% 
   filter(trt %in% c("ach_33", "ach_66"))
 
-ggplot(surv_join_4_mix, aes(x = grass_forb_ratio, y = alive, color = b_u, group = b_u)) +
+ggplot(surv_join_4_mix, aes(x = log(grass_forb_ratio), y = alive, color = b_u, group = b_u)) +
   geom_smooth(method = "glm", method.args = list(family = binomial)) +
   facet_wrap(~ trt) +
   theme_minimal()
 
 # model for both rounds
 
-surv_join_4_mod <- glmmTMB(alive ~ grass_forb_ratio * burn + trt, data = surv_join, family = binomial)
+surv_join_4_mix_mod <- glmmTMB(alive ~ grass * burn + grass * trt + burn * trt + (1|block/cage), data = surv_join_4_mix, family = binomial)
+
+surv_join_4_mix_mod
+
+summary(surv_join_4_mix_mod)
+Anova(surv_join_4_mix_mod)
+
+# the whole data set 
+
+#surv_join_4_mod <- glmmTMB(alive ~ grass * burn + grass * trt + burn * trt + (1|block/cage), data = surv_join, family = binomial)
+
+#summary(surv_join_4_mod)
+#Anova(surv_join_4_mod)
+
+#emmeans(surv_join_4_mod, ~ trt, type = "response")
+
+#---- 
+
+surv_join_4_ach_mod <- glmmTMB(alive ~ grass * burn + grass * trt + burn * trt + (1|block/cage), data = surv_join_4_ach, family = binomial)
+
+summary(surv_join_4_ach_mod)
+Anova(surv_join_4_ach_mod)
+
+emmeans(surv_join_4_ach_mod, ~ trt, type = "response")
+emmeans(surv_join_4_ach_mod, ~ burn|trt, type = "response")
+
 
 #### CANNOT RUN MODEL 
 
