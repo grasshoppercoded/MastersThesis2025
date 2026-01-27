@@ -90,13 +90,13 @@ ggplot(DD,
   geom_boxplot() +
   geom_point() +
   facet_grid(~ burn) + 
-  theme_bw(base_size = 30) + 
+  theme_bw(base_size = 20) + 
   labs(x = "Species", 
        y = "Survival Proportion", 
        title = "Overall survival of species in burned vs. unburned") + 
-  theme(plot.title = element_text(hjust = 0.5, 
+  theme(plot.title = element_text(hjust = 0.4, 
                                   face = "bold", 
-                                  size = 28))
+                                  size = 22))
 
 # ---- 1.2 Overall survival with all treatments ----
 
@@ -115,9 +115,10 @@ ggplot(DD,
 
 ggplot(DD, 
        aes(x = sp, y = perc, color = sp)) +
-  stat_summary(fun = median, geom = "point", size = 4) +
-  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.2) +
-  geom_jitter(width = 0.1, alpha = 0.5) +
+  stat_summary(fun = mean, geom = "point", size = 4) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", color = "black", width = 0.2) +
+  geom_jitter(width = 0.1, alpha = 0.3) +
+  scale_color_brewer(palette = "Dark2") +
   facet_grid(dep ~ burn) + 
   theme_bw(base_size = 26) + 
   labs(x = "Species", 
@@ -126,6 +127,7 @@ ggplot(DD,
   theme(plot.title = element_text(hjust = 0.5, 
                                   face = "bold", 
                                   size = 28))
+
 
 
 
@@ -159,6 +161,21 @@ ggplot(DD %>%
                                   face = "bold", 
                                   size = 28))
 
+ggplot(DD %>% 
+         filter(sp == "ach"), 
+       aes(x = sp, y = perc, color = sp)) +
+  stat_summary(fun = mean, geom = "point", size = 3.8) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", color = "black", width = 0.2) +
+  geom_jitter(width = 0.1, alpha = 0.4) +
+  scale_color_brewer(palette = "Dark2") +
+  facet_grid(dep ~ burn) +
+  theme_bw(base_size = 22) + 
+  labs(x = "A. carinatum", 
+       y = "Survival Proportion", 
+       title = "Survival of A. carinatum in all treatments") + 
+  theme(plot.title = element_text(hjust = 0.5, 
+                                  face = "bold", 
+                                  size = 28))
 
 ## model 
 
@@ -192,18 +209,35 @@ ggplot(DD,aes(x = factor(dens), y = perc, color = dep)) +
 ## ----- 3.2 achurum density dependence in mixtures and monocultures ----
 
 ggplot(DD %>%
-         filter(sp == "ach"),
+         filter(sp == "ach", dep == "monoculture"),
        aes(x = factor(dens), y = perc, color = dep)) +
   geom_boxplot() +
   geom_point() +
   facet_grid(~ burn) +
   theme_bw(base_size = 22) + 
-  labs(x = "Densities and frequencies", 
+  labs(x = "Densities of Achurum", 
        y = "Survival Proportion", 
-       title = "Density and frequency dependence of A. carinatum in all treatments") + 
+       title = "Density dependence of A. carinatum in monocultures") + 
   theme(plot.title = element_text(hjust = 0.2, 
                                   face = "bold", 
                                   size = 22))
+ggplot(DD %>%
+         filter(sp == "ach", dep == "monoculture"),
+       aes(x = factor(dens), y = perc, color = dep)) +
+  stat_summary(fun = mean, geom = "point", size = 3.8) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", color = "black", width = 0.2) +
+  geom_jitter(width = 0.1, alpha = 0.4) +
+  scale_color_brewer(palette = "Dark2") +
+  facet_grid(~ burn) +
+  theme_bw(base_size = 22) + 
+  labs(x = "Densities of Achurum", 
+       y = "Survival Proportion", 
+       title = "Density dependence of A. carinatum in monocultures") + 
+  theme(plot.title = element_text(hjust = 0.2, 
+                                  face = "bold", 
+                                  size = 22), 
+        legend.position = "none")
+
 
 ## ----- 3.2 achurum % frequency in mixtures and monocultures ----
 
@@ -215,10 +249,12 @@ ach_DD <- DD %>%
          ach_dens = factor(ach_dens, levels = c("33", "66", "100")))
 
 ggplot(ach_DD %>%
-         filter(sp == "ach", dep == "mixture"),
+         filter(sp == "ach"),
        aes(x = factor(ach_dens), y = perc, color = dep)) +
-  geom_boxplot() +
-  geom_point() +
+  stat_summary(fun = mean, geom = "point", size = 3.8) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", color = "black", width = 0.2) +
+  geom_jitter(width = 0.1, alpha = 0.4) +
+  scale_color_brewer(palette = "Dark2") +
   facet_grid(~ burn) +
   theme_bw(base_size = 22) + 
   labs(x = "Percent frequency of Achurum", 
@@ -226,16 +262,43 @@ ggplot(ach_DD %>%
        title = "Frequency dependence of Achurum in all treatments") + 
   theme(plot.title = element_text(hjust = 0.2, 
                                   face = "bold", 
-                                  size = 22))
+                                  size = 22), 
+        legend.position = "none")
 
 ## ----- 3.3 aptenopedes density dependence in mixtures and monocultures ----
 
 ggplot(DD %>%
          filter(sp == "apt"),
        aes(x = factor(dens), y = perc, color = dep)) +
+  stat_summary(fun = mean, geom = "point", size = 3.8) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", color = "black", width = 0.2) +
+  geom_jitter(width = 0.1, alpha = 0.4) +
+  scale_color_brewer(palette = "Dark2") +
+  facet_grid(~ burn)
+
+ggplot(DD %>%
+         filter(sp == "apt"),
+       aes(x = factor(dens), y = perc, color = dep)) +
   geom_boxplot() +
   geom_point() +
-  facet_grid(~ burn)
+  facet_grid(~ burn) + 
+  labs(x = "Density of Aptenopedes", 
+       y = "Survival Proportion", 
+       title = "Density dependence of Aptenopedes in all treatments") + 
+  theme_bw(base_size = 22) + 
+  theme(plot.title = element_text(hjust = 0.2, 
+                                  face = "bold", 
+                                  size = 22))
+
+H4 <- glmmTMB(perc ~ dep * burn + (1|block), # can remove the 3-way interactions because its non-sig
+              data = DD %>% filter(sp == "apt"),
+              family = "ordbeta") # ordbeta can handle 0 and 1 and proportions between
+
+summary(H4)
+Anova(H4)
+emmeans(H4, pairwise ~ dep|burn, type = "response") # need to back-transform
+
+plot(simulateResiduals(H2))
 
 ## ---- 3.4 comparison of both species density dependence 
 
