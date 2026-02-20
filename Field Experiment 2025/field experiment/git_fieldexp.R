@@ -64,7 +64,6 @@ print(cages)
 
 ### 1.1 survival in burned vs. unburned over time (round 2, after 3 initial weeks)
 
-
 ggplot(cages %>% 
          filter(round %in% c(1,2)), aes(x = days, y = alive, color = sp)) +
   geom_jitter(height=.1) +
