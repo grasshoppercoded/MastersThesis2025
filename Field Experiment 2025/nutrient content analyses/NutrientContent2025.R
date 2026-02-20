@@ -12,17 +12,14 @@ library(ggrepel)
 library(grid)
 library(ca)
 library(stringr)
-library(usethis)
-library(gitcreds)
 library(glmmTMB)
 
 
-use_git_config(user.name = "Lucia", user.email = "lucia.naviasalva@ufl.edu")
-
+getwd()
 
 # loading data 
 
-ra <- read.csv("plants_summ25_relativeabundance_fixed.csv")
+ra <- read.csv("~/MastersThesis2025_git/Field Experiment 2025/nutrient content analyses/plants_summ25_relativeabundance_fixed.csv")
 
 # explore 
 
@@ -92,6 +89,7 @@ ra_2 <- ra %>%
   filter(round == 2) %>% 
   group_by(b_u, veg) %>% 
   summarise(total_perc = sum(perc, na.rm = TRUE), .groups = "drop") 
+
 
 ra_2
 
@@ -529,3 +527,4 @@ permutest(disp_burn_dom)
 
 disp_dom <- betadisper(dist_dom_burn, data.scores$dominance)
 permutest(disp_dom)
+

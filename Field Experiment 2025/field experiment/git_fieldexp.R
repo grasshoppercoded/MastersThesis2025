@@ -24,7 +24,7 @@ library(gitcreds)
 
 # download data 
 
-data1 <- read_csv("Field Experiment 2025/field experiment/cagestock_summ25_final.csv") %>% 
+data1 <- read_csv("cagestock_summ25_final.csv") %>% 
   select(-notes)
 
 head(data1)
@@ -97,6 +97,22 @@ ggplot(DD,
   theme(plot.title = element_text(hjust = 0.4, 
                                   face = "bold", 
                                   size = 22))
+ggplot(DD, 
+       aes(x = sp, y = perc, color = sp)) +
+  stat_summary(fun = mean, geom = "point", size = 4) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", color = "black", width = 0.2) +
+  geom_jitter(width = 0.1, alpha = 0.3) +
+  scale_color_brewer(palette = "Dark2") +
+  facet_grid(~ burn) + 
+  theme_bw(base_size = 26) + 
+  labs(x = "Species", 
+       y = "Survival Proportion", 
+       title = "Overall survival of species in all treatments") + 
+  theme(plot.title = element_text(hjust = 0.5, 
+                                  face = "bold", 
+                                  size = 28))
+
+
 
 # ---- 1.2 Overall survival with all treatments ----
 
