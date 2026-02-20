@@ -136,6 +136,8 @@ ggplot(sla, mapping = aes(x = as.factor(round), y = ldmc, fill = trt)) +
 
 # ---- Models ----
 
+## Hypothesis 1 - Nutrient content is higher in burned plots vs. unburned plots. 
+
 # sla model 
 
 ggplot(sla, mapping = aes(x = as.factor(round), y = sla, color = trt)) + 
