@@ -49,6 +49,7 @@ cages <- data1 %>%
   mutate(dep = case_when((trt %in% c("ach_high","apt_high","apt_low", "ach_low") ~ "monoculture"),
                          (trt %in% c("ach_66","ach_33") ~ "mixture"))) %>% 
   filter(alive %in% c(0, 1) | is.na(alive)) %>%
+  mutate(as.numeric(alive)) %>% 
   select(c(strip, block, cage, round, dep, trt, burn, sp, ind, alive, days)) %>% 
   drop_na(strip)
 
@@ -79,6 +80,14 @@ ggplot(cages %>%
 DD <- cages %>% 
   group_by(strip, block, cage, trt, dep, sp, round, burn) %>% 
   filter(round == 2) %>% 
+  summarise(perc = mean(alive),
+            days = mean(days), 
+            dens = n_distinct(ind),
+            .groups = "drop")
+
+DD2 <- cages %>% 
+  group_by(strip, block, cage, trt, dep, sp, round, burn) %>% 
+  filter(round == 4) %>% 
   summarise(perc = mean(alive),
             days = mean(days), 
             dens = n_distinct(ind),

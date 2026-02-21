@@ -29,6 +29,13 @@ sla <- sla %>%
          trt = case_when(strip %in% c(1,3,5) ~ "b", strip %in% c(2,4,6) ~ "u"))
 
 unique(sla$plant)
+unique(sla$leaf_area)
+hist(sla$leaf_area)
+
+ggplot(sla, aes(x = plant, y = leaf_area)) + 
+  geom_boxplot() + 
+  geom_point()
+
 
 #---- Visualize ----
 
