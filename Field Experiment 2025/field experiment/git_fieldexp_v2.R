@@ -15,6 +15,8 @@ library(betareg)
 
 # download data 
 
+slaldmc <- read.csv("MastersThesis2025/SLA_LDMC_summ25.csv")
+
 data1 <- read.csv("cagestock_summ25_final.csv") ### grasshopper survival data
 head(data1)
 summary(data1)
@@ -85,7 +87,7 @@ str(cages)
 
 # ---- DATA VISUALIZATION FOR HYPOTHESES ----
 
-#### Hypothesis 2 - A. carinatum survived more in the burned treatment (first 3 weeks) ####
+#### Hypothesis 2 - Density dependence in both grasshopper species would be weaker in burned than unburned plots ####
 
 # make data frame just for the initial 3 weeks, with proportion survival
 
@@ -100,12 +102,11 @@ R2 <- cages %>%
 str(cages$alive)
 head(R2)
 
-ggplot(R2 %>% 
-         filter(sp == "ach"), 
+ggplot(R2,
        aes(x = sp, y = perc)) +
   geom_boxplot() +
   geom_point() +
-  facet_grid(~ burn) + 
+  facet_grid(dep ~ burn) + 
   theme_bw(base_size = 20) + 
   labs(x = "Species", 
        y = "Survival Proportion", 
@@ -114,24 +115,90 @@ ggplot(R2 %>%
                                   face = "bold", 
                                   size = 22))
 
-head(R2)
+# achurum survival (DD) overall
+
+ggplot(R2 %>% filter(sp == "ach"),
+       aes(x = sp, y = perc)) +
+  geom_boxplot() +
+  geom_point() +
+  facet_grid( ~ burn) + 
+  theme_bw(base_size = 20) + 
+  labs(x = "Density", 
+       y = "Survival Proportion", 
+       title = "A. carinatum survival in burned vs. unburned") + 
+  theme(plot.title = element_text(hjust = 0.4, 
+                                  face = "bold", 
+                                  size = 22))
+
+# achurum survival (DD) in monocultures
+
+ggplot(R2 %>% 
+         filter(sp == "ach", dep == "monoculture"),
+       aes(x = high_low, y = perc)) +
+  geom_boxplot() +
+  geom_point() +
+  facet_grid(dep ~ burn) + 
+  theme_bw(base_size = 20) + 
+  labs(x = "Density", 
+       y = "Survival Proportion", 
+       title = "A. carinatum monoculture survival in burned vs. unburned") + 
+  theme(plot.title = element_text(hjust = 0.4, 
+                                  face = "bold", 
+                                  size = 22))
+
+ggplot(R2 %>% 
+         filter(sp == "ach", dep == "monoculture"),
+       aes(x = factor(high_low, levels = c("low", "high")), y = perc)) +
+  geom_boxplot() +
+  geom_point() +
+  facet_grid(dep ~ burn) + 
+  theme_bw(base_size = 20) + 
+  labs(x = "Density", 
+       y = "Survival Proportion", 
+       title = "A. carinatum monoculture survival in burned vs. unburned") + 
+  theme(plot.title = element_text(hjust = 0.4, 
+                                  face = "bold", 
+                                  size = 22))
+
+head(R2)head(R2)trt
 
 R2_ach <- glmmTMB(perc ~ burn * high_low + (1|block), data = R2 %>% 
                     filter(dep == "monoculture", sp == "ach"), family = "ordbeta")
+
 
 plot(simulateResiduals(R2_ach))
 
 summary(R2_ach)
 Anova(R2_ach)
-emmeans(R2_ach,pairwise ~ high_low|burn)
+emmeans(R2_ach,pairwise ~ high_low|burn, type = "response")
+
+## MIXTURES MODEL 
+
+R3_mixtures <- glmmTMB(perc ~ burn * sp * dep + (1|block),
+                       data = R2 %>% 
+                         filter(trt != "ach_low", trt != "apt_low"),
+                       family = "ordbeta")
+
+R22 <- R2 %>% 
+  filter(trt != "ach_low", trt != "apt_low") %>% 
+  print()
+str(R2)
+
+summary(R3_mixtures)
+Anova(R3_mixtures)
+emmeans(R3_mixtures,pairwise ~ dep:burn|sp, type = "response")
 
 # grass ratio 
 
-R2_ach <- glmmTMB(perc ~ sp * burn * high_low + (1|block), data = R2 %>% 
+R2_ach_apt <- glmmTMB(perc ~ sp * burn * high_low + (1|block), data = R2 %>% 
                     filter(dep == "monoculture"), family = "ordbeta")
 
-plot(simulateResiduals(R2_ach))
+plot(simulateResiduals(R2_ach_apt))
 
-summary(R2_ach).                Z
-Anova(R2_ach)
-emmeans(R2_ach,pairwise ~ high_low|sp)
+summary(R2_ach_apt)               
+Anova(R2_ach_apt)
+emmeans(R2_ach_apt,pairwise ~ high_low|sp)
+
+# spiders 
+
+

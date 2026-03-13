@@ -32,9 +32,10 @@ unique(sla$plant)
 unique(sla$leaf_area)
 hist(sla$leaf_area)
 
-ggplot(sla, aes(x = plant, y = leaf_area)) + 
+ggplot(sla, aes(x = trt, y = sla )) + 
   geom_boxplot() + 
-  geom_point()
+  geom_point() + 
+  facet_grid(~ plant)
 
 
 #---- Visualize ----
@@ -42,6 +43,9 @@ ggplot(sla, aes(x = plant, y = leaf_area)) +
 # regression of lead x fresh weight relationship not sure why. 
 
 ggplot(sla, mapping = aes(x = leaf_area, y = fresh_weight)) + 
+  geom_point()
+
+ggplot(sla, mapping = aes(x = leaf_area, y = dry_weight)) + 
   geom_point()
 
 # sla overall 
@@ -69,7 +73,7 @@ ggplot(sla, mapping = aes(x = as.factor(round), y = sla, color = trt)) +
 
 ggplot(sla, mapping = aes(x = as.factor(round), y = sla, color = trt)) + 
   geom_boxplot() + 
-  facet_wrap(~ plant, scales = "free_y") + 
+  facet_wrap(~ plant) + 
   theme_classic(base_size = 14) +
   labs(x = "Plant species", y = "Surface Leaf Area (SLA)", title = "SLA Across Treatments") +
   scale_color_manual(values = c("#E91E63","#4CAF50")) +
