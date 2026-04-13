@@ -149,7 +149,7 @@ emmeans(DD,pairwise ~ high_low|burn|sp, type = "response")
 #DD simple boxplot with proportion
 
 ggplot(cage_exp_dd %>% 
-         filter(dep == "monoculture", round == 4), # round 4 is the second stocking event
+         filter(dep == "monoculture", round == 5), # round 4 is the second stocking event
        aes(x = factor(high_low, levels = c("low", "high")), y = perc)) +
   geom_boxplot(outlier.shape = NA) +
   geom_jitter(width = 0.3) +
@@ -352,6 +352,18 @@ ggplot(surv_plant_2, aes(x = grass_perc, y = perc_survival)) +
   geom_smooth(method = "lm") +
   geom_point() +
   facet_grid(sp ~ burn) + 
+  theme_bw(base_size = 20) + 
+  labs(x = "Grass Percentage", 
+       y = "Survival Proportion", 
+       title = "Survival across grass abundance") + 
+  theme(plot.title = element_text(hjust = 0.4, 
+                                  face = "bold", 
+                                  size = 22))
+
+ggplot(surv_plant_2, aes(x = grass_perc, y = perc_survival)) +
+  #geom_smooth(method = "glm", method.args = list(family = "betareg")) +
+  geom_point(aes(color = burn)) +
+  facet_grid( ~ sp) + 
   theme_bw(base_size = 20) + 
   labs(x = "Grass Percentage", 
        y = "Survival Proportion", 
