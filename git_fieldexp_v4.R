@@ -11,6 +11,8 @@ library(performance)
 library(easystats)
 library(betareg)
 library(tibble)
+library(svglite)
+library(patchwork)
 
 rm(list = ls())
 
@@ -68,9 +70,9 @@ pref_trial_r4 <- pref_trial %>%
 
 ### CAGE-EXPERIMENT SURVIVAL DATA ####
 
-################################.
-### first part of experiment ###.
-################################.
+##################################.
+#### First part of experiment ####
+##################################.
 
 # create days since first stocking 
 
@@ -103,15 +105,15 @@ cage_exp_surv_1 <- cage_exp_general%>%
             dens = n_distinct(ind),
             .groups = "drop")
 
-#################################.
-### second part of experiment ###.
-#################################.
+##################################.
+#### Second part of experiment ####
+##################################.
 
 # creating starting densities for each species within trt
 
 cage_exp_2 <- cage_exp_general %>%
   filter(round == 3, type == "surv", alive == 1) %>% 
-  group_by(strip, block, cage, burn, trt, dep, high_low, sp) %>%
+  group_by(strip, block, cage, round, type, trt, sp, burn, dep, high_low) %>%
   summarize(density = n_distinct(ind), .groups = "drop") %>%
   mutate(density = case_when(
     cage == 23 & sp == "ach" ~ 3, # manually correct starting densities for cages where round 3 counts were underestimated,
@@ -133,7 +135,7 @@ part_2_wide <- cage_exp_2 %>%
 
 cage_exp_surv_2 <- cage_exp_general %>%
   filter(round %in% c(4, 5, 6), alive == 1) %>%
-  group_by(strip, block, cage, sp, round) %>%
+  group_by(strip, block, cage, round, type, trt, sp, burn, dep, high_low) %>%
   summarize(alive_n = n_distinct(ind), .groups = "drop") %>%
   complete(strip, block, cage, sp, round = c(4, 5, 6), fill = list(alive_n = 0)) %>%
   left_join(cage_exp_2 %>%
@@ -176,9 +178,10 @@ cages_2 <- cage_exp_surv_2 %>%
   mutate(perc_survival = alive_n / density) %>%
   filter(density > 0)
 
-############################# PART 1 OF EXPERIMENT ###########################################
-
 # ---- DATA VIZUALIZATION AND MODELS ----- 
+
+
+## ---- PHASE 1 OF EXPERIMENT ---- 
 
 #### H1 - Plants were nutritionally higher in burned vs. unburned ####
 
@@ -191,7 +194,7 @@ cages_2 <- cage_exp_surv_2 %>%
 ggplot(slaldmc, aes(x = trt, y = sla, fill = trt)) + 
   geom_boxplot() + 
   facet_wrap(~ plant, scales = "free_y") + 
-  scale_fill_viridis_d(option = "magma", begin = 0.5 , end = 0.9) +
+  scale_fill_viridis_d(option = "magma", begin = 0.5, end = 0.75) +
   theme_classic(base_size = 22) +
   labs(x = "Burn Treatment",
        y = "Surface Leaf Area (SLA)",
@@ -202,7 +205,7 @@ ggplot(slaldmc, aes(x = trt, y = sla, fill = trt)) +
 ggplot(slaldmc, aes(x = trt, y = ldmc, fill = trt)) + 
   geom_boxplot() + 
   facet_wrap(~ plant, scales = "free_y") + 
-  scale_fill_viridis_d(option = "magma", begin = 0.5 , end = 0.9) +
+  scale_fill_viridis_d(option = "magma", begin = 0.5 , end = 0.75) +
   theme_classic(base_size = 22) +
   labs(x = "Burn Treatment",
        y = "Leaf-Dry Matter-Content (LDMC)",
@@ -213,7 +216,7 @@ ggplot(slaldmc, aes(x = trt, y = ldmc, fill = trt)) +
 # consumed leaf area 
 ggplot(pref_trial_r4, aes(x = trt, y = tot_cons, fill = trt)) + 
   geom_boxplot() + 
-  scale_fill_viridis_d(option = "magma", begin = 0.5 , end = 0.9) +
+  scale_fill_viridis_d(option = "magma", begin = 0.5 , end = 0.75) +
   theme_classic(base_size = 22) +
   labs(y = "Total Herbivory", x = "Burned vs. Unburned", 
        title = "Herbivory in Burned vs. Unburned")
@@ -280,7 +283,6 @@ ggplot(cages_1 %>%
        color = "Density") +
   theme(plot.title = element_text(hjust = 0.4, face = "bold", size = 18))
 
-graphics.off() 
 ### Models ##
 
 # ACH DD
@@ -291,8 +293,9 @@ DD_ach <- glmmTMB(perc_survival ~ grass_perc * high_low * burn,
 
 plot(simulateResiduals(DD_ach))
 Anova(DD_ach)
+summary(DD_ach)
 emmeans(DD_ach,pairwise ~ high_low|burn, type = "response")
-summary(emtrends(DD_ach, ~ high_low * burn, var = "grass_perc"), infer = TRUE)
+emtrends(DD_ach, ~ 1, var = "grass_perc", infer = TRUE)
 
 # APT DD
 DD_apt <- glmmTMB(perc_survival ~ grass_perc * high_low * burn,
@@ -304,28 +307,30 @@ plot(simulateResiduals(DD_apt))
 summary(DD_apt)
 Anova(DD_apt)
 emmeans(DD_apt, pairwise ~ high_low|burn, type = "response", infer = T)
-summary(emtrends(DD_apt, ~ high_low * burn, var = "grass_perc"), infer = TRUE)
+emtrends(DD_apt, ~ 1, var = "grass_perc", infer = TRUE)
 
-graphics.off()
-ggplot(cages_1 %>% 
+# final graph 
+
+prop_surv_grass <- ggplot(cages_1 %>% 
          filter(dep == "monoculture", round == 2),
        aes(x = grass_perc, y = perc_survival,
-           color = factor(high_low, levels = c("low", "high")))) +
+           color = sp)) +
   geom_jitter(width = 0.02, height = 0,
               size = 2.5, alpha = 0.5) +
-  geom_smooth(method = "lm", se = FALSE) +
+  geom_smooth(method = "lm", se = T, alpha = 0.25) +
   facet_grid(~ sp,
              labeller = as_labeller(c(
                ach = "italic('A. carinatum')",
                apt = "italic('A. sphenarioides')"
              ), label_parsed)) +
-  scale_color_viridis_d(option = "magma", end = 0.5) +
-  theme_bw(base_size = 20) +
+  scale_color_viridis_d(option = "magma", end = 0.5, labels = c("A. carinatum", "A. sphenarioides")) +
+  theme_bw(base_size = 23) +
   labs(x = "Percent grass",
        y = "Survival proportion of grasshoppers",
-       title = "Grasshopper monoculture survival across grass %",
-       color = "Density") +
+       color = "Species") +
   theme(plot.title = element_text(hjust = 0.4, face = "bold", size = 18))
+
+ggsave("prop_surv_grass.svg", plot = prop_surv_grass, width = 10, height = 6)
 
 ########## No effects of burn treatment on ACH or APT density dependence ###
 
@@ -375,7 +380,30 @@ emmeans(FD_ach, pairwise ~ trt|burn, type = "response", at = list(grass_perc = 3
 emmeans(FD_ach, pairwise ~ trt|burn, type = "response", at = list(grass_perc = 60))
 emmeans(FD_ach, pairwise ~ trt|burn, type = "response", at = list(grass_perc = 90))
 
+grass_perc_emmeans_ach_fd <- as_tibble(emmeans(FD_ach, ~ trt:burn|grass_perc, type = "response", at = list(grass_perc = c(30, 60, 90))))
 
+grass_perc_ach_fd <- ggplot(grass_perc_emmeans_ach_fd,
+                            aes(x = burn, y = response, color = trt)) +
+  geom_errorbar(aes(ymin = response - SE, ymax = response + SE),
+                position = position_dodge(width = 0.45),
+                width = 0.4,
+                linewidth = 0.8) +
+  geom_point(position = position_dodge(width = 0.45), size = 4) +
+  facet_grid(~ grass_perc) + 
+  scale_color_viridis_d(option = "magma", end = 0, begin = 0.5) +
+  scale_x_discrete(labels = c("33" = "33%","66" = "66%", "100" = "100%")) +
+  theme_bw(base_size = 20) + 
+  labs(x = "Burn Treatment",
+       y = "Proportion survival",
+       color = "Treatment") + 
+  theme(legend.position = "right",
+        panel.grid.minor = element_blank(),
+        strip.background = element_rect(fill = "grey95"),
+        strip.text = element_text(face = "bold"))
+
+ggsave("grass_perc_ach_fd.svg", plot = grass_perc_ach_fd, width = 10, height = 6)
+
+### three-way effect ###
 
 # FD Apt only 
 
@@ -384,29 +412,18 @@ emmeans(FD_ach, pairwise ~ trt|burn, type = "response", at = list(grass_perc = 9
 ggplot(cages_1 %>% 
          filter(sp == "apt", trt != "apt_low", trt != "control", round == 2),
        aes(x = trt, y = perc_survival, color = trt)) +
-  geom_jitter(width = 0.12,
-              size = 2.5,
-              alpha = 0.5) +
-  stat_summary(fun = mean,
-               geom = "point",
-               size = 4) +
-  stat_summary(fun.data = mean_se,
-               geom = "errorbar",
-               width = 0.2,
-               linewidth = 1) +
+  geom_jitter(width = 0.12, size = 2.5, alpha = 0.5) +
+  stat_summary(fun = mean, geom = "point", size = 4) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.2, linewidth = 1) +
   facet_grid(~ burn) + 
   scale_color_viridis_d(option = "magma", end = 0.5) +
-  scale_x_discrete(labels = c("ach_33" = "33%",
-                              "ach_66" = "66%",
-                              "ach_high" = "100%")) +
+  scale_x_discrete(labels = c("ach_33" = "33%", "ach_66" = "66%","ach_high" = "100%")) +
   theme_bw(base_size = 20) + 
   labs(x = "Frequency Treatment", 
        y = "Survival Proportion", 
        title = "Aptenopedes mixture survival in burned vs. unburned",
        color = "Treatment") + 
-  theme(plot.title = element_text(hjust = 0.4, 
-                                  face = "bold", 
-                                  size = 22), 
+  theme(plot.title = element_text(hjust = 0.4, face = "bold",size = 22), 
         legend.position = "none")
 
 # model 
@@ -418,34 +435,37 @@ plot(simulateResiduals(FD_apt))
 summary(FD_apt)
 Anova(FD_apt)
 emmeans(FD_apt,pairwise ~ trt|burn, type = "response")
+emtrends(FD_apt, ~ 1, var = "grass_perc", infer = TRUE)
 
-########## No effects of burn treatment on frequency dependence ###
 
-############################# PART 2 OF EXPERIMENT ###########################################
+########## No effects of burn treatment on apt frequency dependence ###
+
+##--- PHASE 2 OF EXPERIMENT ###########################################
+
 
 #### H2 - Density dependence in both grasshopper species would be weaker in burned than unburned plots ####
 
-ggplot(cage_exp_allrounds %>% 
-         filter(dep == "monoculture"),
-       aes(x = total_start, y = alive_n, color = burn)) +
+# DD in both species 
+
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+
+p_ach <- ggplot(cages_2 %>% 
+                  filter(dep == "monoculture", sp == "ach"),
+                aes(x = total_start, y = perc_survival, color = burn)) +
   geom_point(size = 2.8,
              alpha = 0.7) +
   geom_smooth(method = "lm") +
-  geom_line(data = bh_preds,
-            aes(x = total_start, y = alive_pred),
-            inherit.aes = FALSE,
-            color = "black",
-            linewidth = 1.2) +
-  facet_grid(round ~ sp) +
+  facet_wrap(~ round, ncol = 1) +
   scale_color_viridis_d(option = "magma", begin = 0.5, end = 0.75,
-                        labels = c("u" = "Unburned",
-                                   "b" = "Burned")) +
+                        labels = c("u" = "Unburned", "b" = "Burned")) +
   theme_bw(base_size = 20) +
   labs(x = "Total density",
-       y = "Number alive",
-       title = "Survival over time in the second part of the experiment",
-       color = "Burn treatment") +
-  theme(plot.title = element_text(hjust = 0.4,
+       y = "Survival Proportion",
+       color = "Burn treatment",
+       title = "A. carinatum") +
+  theme(plot.title = element_text(hjust = 0.5,
                                   face = "bold",
                                   size = 22),
         strip.background = element_rect(fill = "grey95",
@@ -453,131 +473,66 @@ ggplot(cage_exp_allrounds %>%
         strip.text = element_text(face = "bold"),
         legend.position = "top")
 
-ggplot(cage_exp_allrounds %>% 
-         filter(dep == "monoculture", sp == "ach"),
-       aes(x = burn, y = prop_survival, color = high_low)) +
-  geom_boxplot() + 
+p_apt <- ggplot(cages_2 %>% 
+                  filter(dep == "monoculture", sp == "apt"),
+                aes(x = total_start, y = perc_survival)) +
   geom_point(size = 2.8,
              alpha = 0.7) +
-  facet_grid(round ~ sp) +
-  scale_color_viridis_d(option = "magma", begin = 0.5, end = 0.75,
-                        labels = c("u" = "Unburned",
-                                   "b" = "Burned")) +
+  geom_smooth(method = "lm", color = "black") +
   theme_bw(base_size = 20) +
+  scale_color_viridis_d(option = "magma", begin = 0.5, end = 0.75) +
   labs(x = "Total density",
-       y = "% survival",
-       title = "Survival over time in the second part of the experiment",
-       color = "Burn treatment") +
-  theme(plot.title = element_text(hjust = 0.4,
+       y = "Survival Proportion",
+       title = "A. sphenarioides") +
+  theme(plot.title = element_text(hjust = 0.5,
                                   face = "bold",
                                   size = 22),
-        strip.background = element_rect(fill = "grey95",
-                                        color = "black"),
-        strip.text = element_text(face = "bold"),
-        legend.position = "top")
+        legend.position = "none")
 
-ggplot(cage_exp_allrounds %>% 
-         filter(dep == "monoculture", sp == "apt"),
-       aes(x = burn, y = prop_survival, color = high_low)) +
-  geom_boxplot() + 
-  geom_point(size = 2.8,
-             alpha = 0.7) +
-  facet_grid(round ~ sp) +
-  scale_color_viridis_d(option = "magma", begin = 0.5, end = 0.75,
-                        labels = c("u" = "Unburned",
-                                   "b" = "Burned")) +
-  theme_bw(base_size = 20) +
-  labs(x = "Total density",
-       y = "% survival",
-       title = "Survival over time in the second part of the experiment",
-       color = "Burn treatment") +
-  theme(plot.title = element_text(hjust = 0.4,
-                                  face = "bold",
-                                  size = 22),
-        strip.background = element_rect(fill = "grey95",
-                                        color = "black"),
-        strip.text = element_text(face = "bold"),
-        legend.position = "top")
+grass_perc_ach_apt_dd <- p_ach + p_apt + plot_layout(widths = c(1, 1))
 
-summary(bh_ach_r4)
+ggsave("grass_perc_ach_apt_dd.svg", plot = grass_perc_ach_apt_dd, width = 7, height = 8)
 
 
+# ACH DD model 
 
-# ACH GML model 
-
-# using starting density 
-
-ach_2_DD <- glmmTMB(cbind(alive_n, density - alive_n) ~ density * burn * as.factor(round) + (1 | block/cage),
-                    family = binomial,
-                    data = cage_exp_allrounds %>%
-                      filter(dep == "monoculture", sp == "ach"))
+ach_2_DD <- glmmTMB(perc_survival ~ density * burn * as.factor(round) + (1 | block/cage),
+                    family = "ordbeta",
+                    data = cages_2 %>%
+                      filter(dep == "monoculture", sp == "ach", trt != "control", 
+                             round > 3))
 
 simulateResiduals(ach_2_DD, plot = T)
 summary(ach_2_DD)
 Anova(ach_2_DD)
-emtrends(ach_2_DD,pairwise ~ burn|round, var = "density", infer = T)
+emtrends(ach_2_DD, pairwise ~ round:burn, var = "density", infer = T)
+emmeans(ach_2_DD, pairwise ~ burn:round, type = "response")
 
-############ ATKE CARE OF THIS 
+# APT DD model 
 
-unique(cage_exp_allrounds$prop_survival)
-
-apt_2_DD <- glmmTMB(perc_survival ~ high_low * burn * as.factor(round) + (1 | block/cage),
+apt_2_DD <- glmmTMB(perc_survival ~ density * burn * as.factor(round) + (1 | block/cage),
                     family = "ordbeta",
-                    data = surv_plant %>%
+                    data = cages_2 %>%
                       filter(dep == "monoculture", sp == "apt", trt != "control", 
                              round > 3))
 
 simulateResiduals(apt_2_DD, plot = T)
 summary(apt_2_DD)
 Anova(apt_2_DD)
-emmeans(apt_2_DD, pairwise ~ high_low|round:burn, type = "response")
-emmeans(apt_2_DD, pairwise ~ burn|round, type = "response")
 
+emtrends(apt_2_DD, ~ 1, var = "density", infer = T)
+densities_emmeans_apt_dd <- as_tibble(emmeans(apt_2_DD, ~ round:burn|density,
+                                               type = "response",
+                                               at = list(density = c(4, 6, 8)), infer = T))
 
-###########################
-
-# using high_low categories
-
-ach_2_DD_hl <- glmmTMB(cbind(alive_n, density - alive_n) ~ high_low * burn * as.factor(round) + (1 | block/cage),
-                    family = binomial,
-                    data = cage_exp_allrounds %>%
-                      filter(dep == "monoculture", sp == "ach"))
-
-simulateResiduals(ach_2_DD_hl, plot = T)
-summary(ach_2_DD_hl)
-Anova(ach_2_DD_hl)
-emmeans(ach_2_DD_hl,pairwise ~ high_low|round:burn, type = "response") 
-
-# ACH DD GLM model on just round 5 
-
-ach_2_DD_5 <- glmmTMB(cbind(alive_n, density - alive_n) ~ density * burn + (1 | block/cage),
-                      family = binomial,
-                      data = cage_exp_allrounds %>%
-                        filter(dep == "monoculture", sp == "ach", round == 5))
-
-simulateResiduals(ach_2_DD_5, plot = T)
-summary(ach_2_DD_5)
-Anova(ach_2_DD_5)
-emtrends(ach_2_DD_5,pairwise ~ burn, var = "density", infer = T)
-
-# APT DD GLM model on just round 5 
-
-apt_2_DD_5 <- glmmTMB(cbind(alive_n, density - alive_n) ~ density * burn + (1 | block/cage),
-                      family = binomial,
-                      data = cage_exp_allrounds %>%
-                        filter(dep == "monoculture", sp == "apt", round == 5))
-
-simulateResiduals(apt_2_DD_5, plot = T)
-summary(apt_2_DD_5)
-Anova(apt_2_DD_5)
-emtrends(apt_2_DD_5,pairwise ~ burn, var = "density", infer = T)
+emmeans(apt_2_DD, pairwise ~ density, type = "response", at = list(density = c(4, 6, 8)), infer = T)
 
 #### H3 - Frequency dependence would  be weaker in burned vs. unburned plots ####
 
 ## Visuals ##
 
-cage_exp_2_fd_plot <- surv_plant %>% 
-  filter(round == 5, trt != "ach_low", trt != "apt_low", trt != "control" ) %>% 
+cage_exp_2_fd_plot <- cages_2 %>% 
+  filter(trt != "ach_low", trt != "apt_low", trt != "control" ) %>% 
   mutate(freq_label = case_when(
     sp == "ach" & trt == "ach_33" ~ "33%",
     sp == "ach" & trt == "ach_66" ~ "66%",
@@ -588,206 +543,79 @@ cage_exp_2_fd_plot <- surv_plant %>%
     sp == "apt" & trt == "ach_high" ~ "0%",
     sp == "apt" & trt == "apt_high" ~ "100%" ))
 
+# only a. carinatum with burn, round, and treatment 
+
+ach_2_fd_graph <- ggplot(cage_exp_2_fd_plot %>% 
+         filter(sp == "ach"), aes(x = factor(freq_label,
+                                          levels = c("0%", "33%", "66%", "100%")),
+                               y = perc_survival,
+                               color = factor(freq_label, levels = c("0%", "33%", "66%", "100%")))) +
+  geom_jitter(width = 0.12, size = 2.5, alpha = 0.5) +
+  stat_summary(fun = mean, geom = "point", size = 4) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.15, linewidth = 1) +
+  facet_grid(round ~ burn) +
+  scale_color_viridis_d(option = "magma", begin = 0.2, end = 0.5) +
+  theme_bw(base_size = 20) +
+  labs(x = "Focal species frequency", y = "Survival Proportion", color = "Frequency") +
+  theme(plot.title = element_text(hjust = 0.4, face = "bold", size = 22), legend.position = "none", strip.background = element_rect(fill = "grey95", color = "black"), strip.text = element_text(face = "bold"))
+
+ggsave("ach_2_fd_graph.svg", plot = ach_2_fd_graph, width = 8, height = 7)
+
+# only a. sphenarioides with burn and treatment 
+
+apt_2_fd_graph <- ggplot(cage_exp_2_fd_plot %>% 
+                           filter(sp == "apt"), aes(x = factor(freq_label,
+                                                               levels = c("0%", "33%", "66%", "100%")),
+                                                    y = perc_survival,
+                                                    color = factor(freq_label, levels = c("0%", "33%", "66%", "100%")))) +
+  geom_jitter(width = 0.12, size = 2.5, alpha = 0.5) +
+  stat_summary(fun = mean, geom = "point", size = 4) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.15, linewidth = 1) +
+  facet_grid(~ burn) +
+  scale_color_viridis_d(option = "magma", begin = 0.2, end = 0.5) +
+  theme_bw(base_size = 20) +
+  labs(x = "Focal species frequency", y = "Survival Proportion", color = "Frequency") +
+  theme(plot.title = element_text(hjust = 0.4, face = "bold", size = 22), legend.position = "none", strip.background = element_rect(fill = "grey95", color = "black"), strip.text = element_text(face = "bold"))
+
+ggsave("apt_2_fd_graph.svg", plot = apt_2_fd_graph, width = 6, height = 8)
+
+
 ggplot(cage_exp_2_fd_plot, aes(x = factor(freq_label,
                                           levels = c("0%", "33%", "66%", "100%")),
                                y = perc_survival,
                                color = factor(freq_label, levels = c("0%", "33%", "66%", "100%")))) +
   geom_jitter(width = 0.12, size = 2.5, alpha = 0.5) +
   stat_summary(fun = mean, geom = "point", size = 4) +
-  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.2, linewidth = 1) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.15, linewidth = 1) +
   facet_grid(burn ~ sp) +
   scale_color_viridis_d(option = "magma", begin = 0.2, end = 0.5) +
   theme_bw(base_size = 20) +
-  labs(x = "Focal species frequency", y = "Survival Proportion", title = "Grasshopper mixture survival in burned vs. unburned", color = "Frequency") +
+  labs(x = "Focal species frequency", y = "Survival Proportion", color = "Frequency") +
   theme(plot.title = element_text(hjust = 0.4, face = "bold", size = 22), legend.position = "none", strip.background = element_rect(fill = "grey95", color = "black"), strip.text = element_text(face = "bold"))
 
-# ACH FD all rounds , 4/7/26
+# ACH FD 
 
-ach_2_fd_bin <- glmmTMB(prop_survival ~ trt * burn * as.factor(round) + (1|block/cage),
-                    data = cage_exp_allrounds %>% 
-                      filter(sp == "ach", trt != "ach_low", prop_survival < 1.01, round != 6), family = "binomial")
-
-plot(simulateResiduals(ach_2_fd_bin))
-summary(ach_2_fd_bin)
-Anova(ach_2_fd_bin)
-emmeans(ach_2_fd_bin,pairwise ~ trt|burn:round, type = "response")
-
-# ACH FD all rounds 4/7
-
-ach_2_fd_allrounds <- glmmTMB(perc_survival ~ grass_perc + trt * burn * as.factor(round) + (1|block/cage),
-                    data = surv_plant %>% 
-                      filter(sp == "ach", trt != "ach_low", round > 3) %>% 
-                      filter(round != 6), family = "ordbeta")
-
-plot(simulateResiduals(ach_2_fd_allrounds))
-summary(ach_2_fd_allrounds)
-Anova(ach_2_fd_allrounds)
-emmeans(ach_2_fd_allrounds,pairwise ~ trt|burn:round, type = "response")
-
-# ACH FD round 5 4/7
-
-ach_2_fd <- glmmTMB(perc_survival ~ trt * burn + (1|block),
-                    data = surv_plant %>% 
-                      filter(sp == "ach", trt != "ach_low", round == 5), family = "ordbeta")
+ach_2_fd <- glmmTMB(perc_survival ~ trt * burn * as.factor(round) + (1|block/cage),
+                    data = cages_2 %>% 
+                      filter(sp == "ach", trt != "ach_low"), family = "ordbeta")
 
 plot(simulateResiduals(ach_2_fd))
 summary(ach_2_fd)
 Anova(ach_2_fd)
-emmeans(ach_2_fd,pairwise ~ trt|burn, type = "response")
+emmeans(ach_2_fd,pairwise ~ trt|burn:round, type = "response")
 
-# ACH FD round 5 
+# APT FD
 
-ach_2_fd <- glmmTMB(perc_survival ~ grass_perc * trt * burn,
-                                  data = surv_plant %>% 
-                                    filter(sp == "ach", trt != "ach_low", round == 5), family = "ordbeta")
-
-plot(simulateResiduals(ach_2_fd))
-summary(ach_2_fd)
-Anova(ach_2_fd)
-emmeans(ach_2_fd,pairwise ~ trt|burn, type = "response")
-
-# APT OBSERVATIONS
-
-surv_plant_apt <- cage_exp_allrounds %>% 
-  filter(sp == "apt") %>% 
-  group_by(round, trt, burn) %>% 
-  summarise(total = n(), .groups = "drop")
-
-surv_plant_apt <- cage_exp_allrounds %>% 
-  filter(sp == "apt") %>% 
-  group_by(round, trt, burn, alive_n) %>% 
-  summarise(total = n(), .groups = "drop")
-
-surv_plant_apt <- cage_exp_allrounds %>% 
-  filter(sp == "apt") %>% 
-  group_by(round, trt, burn) %>% 
-  summarise(avg = mean(alive_n), .groups = "drop")
-
-#perc_survival = mean(alive),
-#days = mean(days),
-#dens = n_distinct(ind),
-#.groups = "drop"
-#)  
-
-# APT FD rounds 4 & 5
-
-apt_2_fd_allrounds <- glmmTMB(perc_survival ~ grass_perc + trt * burn * as.factor(round) + (1|block/cage),
-                    data = surv_plant %>% 
-                      filter(sp == "apt", trt != "apt_low", round != 6, trt != "control") %>% 
+apt_2_fd <- glmmTMB(perc_survival ~ trt * burn * as.factor(round) + (1|block/cage),
+                    data = cages_2 %>% 
+                      filter(sp == "apt", trt != "apt_low", trt != "control") %>% 
                       filter(round > 3), family = "ordbeta")
 
-plot(simulateResiduals(apt_2_fd_allrounds))
-
-summary(apt_2_fd_allrounds)
-Anova(apt_2_fd_allrounds)
-emmeans(apt_2_fd_allrounds,pairwise ~ trt|burn:round, type = "response")
-
-# APT FD 
-
-apt_2_fd <- glmmTMB(perc_survival ~ grass_perc * trt * burn,
-                                  data = surv_plant %>% 
-                                    filter(sp == "apt", trt != "apt_low", round == 5, trt != "control"), family = "ordbeta")
-
 plot(simulateResiduals(apt_2_fd))
-
 summary(apt_2_fd)
 Anova(apt_2_fd)
-emmeans(apt_2_fd,pairwise ~ trt|burn, type = "response")
+emmeans(apt_2_fd, pairwise ~ trt|burn, type = "response")
+emmeans(apt_2_fd, pairwise ~ burn:trt, type = "response")
+
 
 ########## Effects of burn treatment on frequency dependence and species ###
-
-############################# OVERALL RESULTS ###########################################
-
-anova_table <- function(model, model_name) {
-  out <- as.data.frame(Anova(model))
-  out$effect <- rownames(out)
-  rownames(out) <- NULL
-  out$model <- model_name
-  out <- out[, c("model", "effect", "Chisq", "Df", "Pr(>Chisq)")]
-  out
-}
-
-emm_table <- function(emm_obj, model_name) {
-  if("emm_list" %in% class(emm_obj)) {
-    out <- as.data.frame(summary(emm_obj[[1]]))
-  } else {
-    out <- as.data.frame(summary(emm_obj))
-  }
-  out$model <- model_name
-  out
-}
-
-contrast_table <- function(emm_obj, model_name) {
-  if("emm_list" %in% class(emm_obj)) {
-    out <- as.data.frame(summary(emm_obj[[2]]))
-    out$model <- model_name
-    out
-  }
-}
-
-part1_models <- list(sla = sla, ldmc = ldmc, preference = preference, DD_ach = DD_ach,
-                     DD_apt = DD_apt, FD_ach = FD_ach, FD_apt = FD_apt)
-
-part2_models <- list(ach_2_DD = ach_2_DD, ach_2_DD_5 = ach_2_DD_5, apt_2_DD_5 = apt_2_DD_5,
-                     ach_2_FD = ach_2_FD, apt_2_fd = apt_2_fd)
-
-all_models <- c(part1_models, part2_models)
-
-part1_emm <- list(sla = emmeans(sla, pairwise ~ trt|plant),
-                  ldmc = emmeans(ldmc, pairwise ~ trt|plant),
-                  preference = emmeans(preference, ~ trt),
-                  DD_ach = emmeans(DD_ach, pairwise ~ high_low|burn, type = "response"),
-                  DD_apt = emmeans(DD_apt, pairwise ~ high_low|burn, type = "response"),
-                  FD_ach = emmeans(FD_ach, pairwise ~ trt|burn, type = "response"),
-                  FD_apt = emmeans(FD_apt, pairwise ~ trt|burn, type = "response"))
-
-part2_emm <- list(ach_2_DD = emtrends(ach_2_DD, pairwise ~ burn|round, var = "density", infer = TRUE),
-                  ach_2_DD_5 = emtrends(ach_2_DD_5, pairwise ~ burn, var = "density", infer = TRUE),
-                  apt_2_DD_5 = emtrends(apt_2_DD_5, pairwise ~ burn, var = "density", infer = TRUE),
-                  ach_2_FD = emmeans(ach_2_FD, pairwise ~ trt|burn, type = "response"),
-                  apt_2_fd = emmeans(apt_2_fd, pairwise ~ trt|burn, type = "response"))
-
-all_emm <- c(part1_emm, part2_emm)
-
-anova_results <- bind_rows(anova_table(sla, "sla"),
-                           anova_table(ldmc, "ldmc"),
-                           anova_table(preference, "preference"),
-                           anova_table(DD_ach, "DD_ach"),
-                           anova_table(DD_apt, "DD_apt"),
-                           anova_table(FD_ach, "FD_ach"),
-                           anova_table(FD_apt, "FD_apt"),
-                           anova_table(ach_2_DD, "ach_2_DD"),
-                           anova_table(ach_2_DD_5, "ach_2_DD_5"),
-                           anova_table(apt_2_DD_5, "apt_2_DD_5"),
-                           anova_table(ach_2_FD, "ach_2_FD"),
-                           anova_table(apt_2_fd, "apt_2_fd"))
-
-emm_results <- bind_rows(emm_table(part1_emm$sla, "sla"),
-                         emm_table(part1_emm$ldmc, "ldmc"),
-                         emm_table(part1_emm$preference, "preference"),
-                         emm_table(part1_emm$DD_ach, "DD_ach"),
-                         emm_table(part1_emm$DD_apt, "DD_apt"),
-                         emm_table(part1_emm$FD_ach, "FD_ach"),
-                         emm_table(part1_emm$FD_apt, "FD_apt"),
-                         emm_table(part2_emm$ach_2_DD, "ach_2_DD"),
-                         emm_table(part2_emm$ach_2_DD_5, "ach_2_DD_5"),
-                         emm_table(part2_emm$apt_2_DD_5, "apt_2_DD_5"),
-                         emm_table(part2_emm$ach_2_FD, "ach_2_FD"),
-                         emm_table(part2_emm$apt_2_fd, "apt_2_fd"))
-
-contrast_results <- bind_rows(contrast_table(part1_emm$sla, "sla"),
-                              contrast_table(part1_emm$ldmc, "ldmc"),
-                              contrast_table(part1_emm$preference, "preference"),
-                              contrast_table(part1_emm$DD_ach, "DD_ach"),
-                              contrast_table(part1_emm$DD_apt, "DD_apt"),
-                              contrast_table(part1_emm$FD_ach, "FD_ach"),
-                              contrast_table(part1_emm$FD_apt, "FD_apt"),
-                              contrast_table(part2_emm$ach_2_DD, "ach_2_DD"),
-                              contrast_table(part2_emm$ach_2_DD_5, "ach_2_DD_5"),
-                              contrast_table(part2_emm$apt_2_DD_5, "apt_2_DD_5"),
-                              contrast_table(part2_emm$ach_2_FD, "ach_2_FD"),
-                              contrast_table(part2_emm$apt_2_fd, "apt_2_fd"))
-
-anova_results
-emm_results
-contrast_results

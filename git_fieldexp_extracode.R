@@ -399,6 +399,124 @@ summary(grassdominance2_apt_fd)
 Anova(grassdominance2_apt_fd)
 emmeans(grassdominance2_apt_fd,pairwise ~ trt, type = "response")
 
+
+####################################################
+######### NEW PART 2 DD MODELS ##################
+##################################################
+
+# using starting density 
+
+ach_2_DD_ignore <- glmmTMB(cbind(alive_n, density - alive_n) ~ density * burn * as.factor(round) + (1 | block/cage),
+                    family = binomial,
+                    data = cages_2 %>%
+                      filter(dep == "monoculture", sp == "ach"))
+
+simulateResiduals(ach_2_DD_ignore, plot = T)
+check_autocorrelation(ach_2_DD_ignore)
+summary(ach_2_DD_ignore)
+Anova(ach_2_DD_ignore)
+emtrends(ach_2_DD_ignore,pairwise ~ burn|round, var = "density", infer = T)
+
+# Proportion survival of A. carinatum  
+
+ggplot(cages_2 %>% 
+         filter(dep == "monoculture", sp == "ach"),
+       aes(x = burn, y = perc_survival, color = high_low)) +
+  geom_boxplot() + 
+  geom_point(size = 2.8,
+             alpha = 0.7) +
+  facet_grid(round ~ sp) +
+  scale_color_viridis_d(option = "magma", begin = 0.5, end = 0.75,
+                        labels = c("u" = "Unburned",
+                                   "b" = "Burned")) +
+  theme_bw(base_size = 20) +
+  labs(x = "Burn treatment",
+       y = "Survival Proportion",
+       color = "Burn treatment") +
+  theme(plot.title = element_text(hjust = 0.4,
+                                  face = "bold",
+                                  size = 22),
+        strip.background = element_rect(fill = "grey95",
+                                        color = "black"),
+        strip.text = element_text(face = "bold"),
+        legend.position = "top")
+
+# Proportion survival of A. sphenarioides  
+
+ggplot(cages_2 %>% 
+         filter(dep == "monoculture", sp == "apt"),
+       aes(x = burn, y = perc_survival, color = high_low)) +
+  geom_boxplot() + 
+  geom_point(size = 2.8,
+             alpha = 0.7) +
+  facet_grid(round ~ sp) +
+  scale_color_viridis_d(option = "magma", begin = 0.5, end = 0.75,
+                        labels = c("u" = "Unburned",
+                                   "b" = "Burned")) +
+  theme_bw(base_size = 20) +
+  labs(x = "Burn treatment",
+       y = "Survival Proportion",
+       color = "Burn treatment") +
+  theme(plot.title = element_text(hjust = 0.4,
+                                  face = "bold",
+                                  size = 22),
+        strip.background = element_rect(fill = "grey95",
+                                        color = "black"),
+        strip.text = element_text(face = "bold"),
+        legend.position = "top")
+
+
+###########################
+
+# using high_low categories
+
+ach_2_DD_hl <- glmmTMB(cbind(alive_n, density - alive_n) ~ high_low * burn * as.factor(round) + (1 | block/cage),
+                       family = binomial,
+                       data = cages_2 %>%
+                         filter(dep == "monoculture", sp == "ach"))
+
+simulateResiduals(ach_2_DD_hl, plot = T)
+summary(ach_2_DD_hl)
+Anova(ach_2_DD_hl)
+emmeans(ach_2_DD_hl,pairwise ~ high_low|round:burn, type = "response") 
+
+# ACH DD GLM model on just round 5 
+
+ach_2_DD_5 <- glmmTMB(cbind(alive_n, density - alive_n) ~ density * burn + (1 | block/cage),
+                      family = binomial,
+                      data = cage_exp_allrounds %>%
+                        filter(dep == "monoculture", sp == "ach", round == 5))
+
+simulateResiduals(ach_2_DD_5, plot = T)
+summary(ach_2_DD_5)
+Anova(ach_2_DD_5)
+emtrends(ach_2_DD_5,pairwise ~ burn, var = "density", infer = T)
+
+# APT DD GLM model on just round 5 
+
+apt_2_DD_5 <- glmmTMB(cbind(alive_n, density - alive_n) ~ density * burn + (1 | block/cage),
+                      family = binomial,
+                      data = cage_exp_allrounds %>%
+                        filter(dep == "monoculture", sp == "apt", round == 5))
+
+simulateResiduals(apt_2_DD_5, plot = T)
+summary(apt_2_DD_5)
+Anova(apt_2_DD_5)
+emtrends(apt_2_DD_5,pairwise ~ burn, var = "density", infer = T)
+
+
+# APT FD with grass percentage (crazy effects)
+
+apt_2_fd <- glmmTMB(perc_survival ~ grass_perc * trt * burn,
+                    data = cages_2 %>% 
+                      filter(sp == "apt", trt != "apt_low", round == 5, trt != "control"), family = "ordbeta")
+
+plot(simulateResiduals(apt_2_fd))
+
+summary(apt_2_fd)
+Anova(apt_2_fd)
+emmeans(apt_2_fd,pairwise ~ trt|burn, type = "response")
+
 #### ADDITIONAL: SPIDER PREDATION DATA ####
 
 cage_exp_spider <- cage_exp %>% 
