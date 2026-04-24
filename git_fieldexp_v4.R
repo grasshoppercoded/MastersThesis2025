@@ -37,6 +37,9 @@ plant_abundance <- read.csv("plants_summ25_relativeabundance_fixed.csv") ### pla
 head(plant_abundance)
 summary(plant_abundance)
 
+carb_readings <- read_csv("Samples_Absorbance_Carb.csv") %>% select(-notes)
+carbs <- read_csv("carb_assay.csv") %>% filter(round == 1) %>% select(-notes)
+
 #---- CLEANING DATA ----
 
 ### SLA-LDMC #### 
@@ -52,6 +55,13 @@ unique(slaldmc$plant)
 str(slaldmc)
 summary(slaldmc)
 hist(slaldmc$leaf_area)
+
+### CARBS ###
+
+carbs <- carb_readings %>% 
+  group_by(round,label) %>%
+  summarise(absorbance = mean(absorbance, na.rm=T)) %>% 
+  full_join(carb_readings, carbs, by = c("label"), .groups = "drop")
 
 ### CHOICE-ASSAY ####
 
