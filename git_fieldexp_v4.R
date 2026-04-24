@@ -214,12 +214,15 @@ ggplot(slaldmc, aes(x = trt, y = ldmc, fill = trt)) +
 # CHOICE-ASSAY 
 
 # consumed leaf area 
-ggplot(pref_trial_r4, aes(x = trt, y = tot_cons, fill = trt)) + 
+choice_assay <- ggplot(pref_trial_r4, aes(x = trt, y = tot_cons, fill = trt)) + 
   geom_boxplot() + 
   scale_fill_viridis_d(option = "magma", begin = 0.5 , end = 0.75) +
   theme_classic(base_size = 22) +
   labs(y = "Total Herbivory", x = "Burned vs. Unburned", 
        title = "Herbivory in Burned vs. Unburned")
+
+ggsave("choice_assay.svg", plot = choice_assay, width = 6, height = 5)
+
 
 ## Models ##  
 
@@ -339,7 +342,6 @@ ggsave("prop_surv_grass.svg", plot = prop_surv_grass, width = 10, height = 6)
 ## Visuals ##
 
 # FD Achurum only 
-
 ggplot(cages_1 %>% 
          filter(sp == "ach", trt != "ach_low", round == 2,),
        aes(x = trt, y = perc_survival, color = trt)) +
@@ -492,6 +494,7 @@ p_apt <- ggplot(cages_2 %>%
 grass_perc_ach_apt_dd <- p_ach + p_apt + plot_layout(widths = c(1, 1))
 
 ggsave("grass_perc_ach_apt_dd.svg", plot = grass_perc_ach_apt_dd, width = 7, height = 8)
+ggsave("p_apt.svg", plot = p_apt, width = 4, height = 5)
 
 
 # ACH DD model 
@@ -531,6 +534,8 @@ emmeans(apt_2_DD, pairwise ~ density, type = "response", at = list(density = c(4
 
 ## Visuals ##
 
+# both species no rounds
+
 cage_exp_2_fd_plot <- cages_2 %>% 
   filter(trt != "ach_low", trt != "apt_low", trt != "control" ) %>% 
   mutate(freq_label = case_when(
@@ -542,6 +547,20 @@ cage_exp_2_fd_plot <- cages_2 %>%
     sp == "apt" & trt == "ach_66" ~ "33%",
     sp == "apt" & trt == "ach_high" ~ "0%",
     sp == "apt" & trt == "apt_high" ~ "100%" ))
+
+ggplot(cage_exp_2_fd_plot, aes(x = factor(freq_label,
+                                          levels = c("0%", "33%", "66%", "100%")),
+                               y = perc_survival,
+                               color = factor(freq_label, levels = c("0%", "33%", "66%", "100%")))) +
+  geom_jitter(width = 0.12, size = 2.5, alpha = 0.5) +
+  stat_summary(fun = mean, geom = "point", size = 4) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.15, linewidth = 1) +
+  facet_grid(burn ~ sp) +
+  scale_color_viridis_d(option = "magma", begin = 0.2, end = 0.5) +
+  theme_bw(base_size = 20) +
+  labs(x = "Focal species frequency", y = "Survival Proportion", color = "Frequency") +
+  theme(plot.title = element_text(hjust = 0.4, face = "bold", size = 22), legend.position = "none", strip.background = element_rect(fill = "grey95", color = "black"), strip.text = element_text(face = "bold"))
+
 
 # only a. carinatum with burn, round, and treatment 
 
@@ -564,10 +583,12 @@ ggsave("ach_2_fd_graph.svg", plot = ach_2_fd_graph, width = 8, height = 7)
 # only a. sphenarioides with burn and treatment 
 
 apt_2_fd_graph <- ggplot(cage_exp_2_fd_plot %>% 
-                           filter(sp == "apt"), aes(x = factor(freq_label,
-                                                               levels = c("0%", "33%", "66%", "100%")),
-                                                    y = perc_survival,
-                                                    color = factor(freq_label, levels = c("0%", "33%", "66%", "100%")))) +
+                           filter(sp == "apt"),
+                         aes(x = factor(freq_label, 
+                                        levels = c("0%", "33%", "66%", "100%")),
+                             y = perc_survival, 
+                             color = factor(freq_label, 
+                                            levels = c("0%", "33%", "66%", "100%")))) +
   geom_jitter(width = 0.12, size = 2.5, alpha = 0.5) +
   stat_summary(fun = mean, geom = "point", size = 4) +
   stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.15, linewidth = 1) +
@@ -577,21 +598,7 @@ apt_2_fd_graph <- ggplot(cage_exp_2_fd_plot %>%
   labs(x = "Focal species frequency", y = "Survival Proportion", color = "Frequency") +
   theme(plot.title = element_text(hjust = 0.4, face = "bold", size = 22), legend.position = "none", strip.background = element_rect(fill = "grey95", color = "black"), strip.text = element_text(face = "bold"))
 
-ggsave("apt_2_fd_graph.svg", plot = apt_2_fd_graph, width = 6, height = 8)
-
-
-ggplot(cage_exp_2_fd_plot, aes(x = factor(freq_label,
-                                          levels = c("0%", "33%", "66%", "100%")),
-                               y = perc_survival,
-                               color = factor(freq_label, levels = c("0%", "33%", "66%", "100%")))) +
-  geom_jitter(width = 0.12, size = 2.5, alpha = 0.5) +
-  stat_summary(fun = mean, geom = "point", size = 4) +
-  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.15, linewidth = 1) +
-  facet_grid(burn ~ sp) +
-  scale_color_viridis_d(option = "magma", begin = 0.2, end = 0.5) +
-  theme_bw(base_size = 20) +
-  labs(x = "Focal species frequency", y = "Survival Proportion", color = "Frequency") +
-  theme(plot.title = element_text(hjust = 0.4, face = "bold", size = 22), legend.position = "none", strip.background = element_rect(fill = "grey95", color = "black"), strip.text = element_text(face = "bold"))
+ggsave("apt_2_fd_graph.svg", plot = apt_2_fd_graph, width = 6, height = 5.5)
 
 # ACH FD 
 
